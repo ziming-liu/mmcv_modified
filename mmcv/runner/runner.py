@@ -62,6 +62,7 @@ class Runner(object):
             self._model_name = self.model.__class__.__name__
 
         self._rank, self._world_size = get_dist_info()
+        self.timestamp = get_time_str()
         if logger is None:
             self.logger = self.init_logger(work_dir, log_level)
         else:
@@ -174,7 +175,7 @@ class Runner(object):
             format='%(asctime)s - %(levelname)s - %(message)s', level=level)
         logger = logging.getLogger(__name__)
         if log_dir and self.rank == 0:
-            filename = '{}.log'.format(get_time_str())
+            filename = '{}.log'.format(self.timestamp)
             log_file = osp.join(log_dir, filename)
             self._add_file_handler(logger, log_file, level=level)
         return logger
@@ -242,11 +243,13 @@ class Runner(object):
         else:
             meta.update(epoch=self.epoch + 1, iter=self.iter)
 
-        filename = osp.join(out_dir, filename_tmpl.format(self.epoch + 1))
-        linkname = osp.join(out_dir, 'latest.pth')
+        filename = filename_tmpl.format(self.epoch + 1)
+        filepath = osp.join(out_dir, filename)
+        linkpath = osp.join(out_dir, 'latest.pth')
         optimizer = self.optimizer if save_optimizer else None
-        save_checkpoint(self.model, filename, optimizer=optimizer, meta=meta)
-        mmcv.symlink(filename, linkname)
+        save_checkpoint(self.model, filepath, optimizer=optimizer, meta=meta)
+        # use relative symlink
+        mmcv.symlink(filename, linkpath)
 
     def train(self, data_loader, **kwargs):
         self.model.train()
